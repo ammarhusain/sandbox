@@ -13,3 +13,4 @@ set(CMAKE_CXX_FLAGS "-Wall -std=c++14 -g")
 
 add_subdirectory(connected-components)
 add_subdirectory(eigen_matrix_shift)
+add_subdirectory(point-stats)
