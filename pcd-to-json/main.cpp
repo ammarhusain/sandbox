@@ -9,7 +9,7 @@
 #include <pcl/point_types.h>
 #include <random>
 
-int pcd_to_json(std::string pcd_file, double x, double y, double z) {
+int pcd_to_json(std::string pcd_file, double x, double y, double z, double qx, double qy, double qz, double qw) {
   size_t lastindex = pcd_file.find_last_of(".");
   std::string rawname = pcd_file.substr(0, lastindex);
 
@@ -28,6 +28,10 @@ int pcd_to_json(std::string pcd_file, double x, double y, double z) {
   root["device_position"]["x"] = x;
   root["device_position"]["y"] = y;
   root["device_position"]["z"] = z;
+  root["device_heading"]["x"] = qx;
+  root["device_heading"]["y"] = qy;
+  root["device_heading"]["z"] = qz;
+  root["device_heading"]["w"] = qw;
 
   for (size_t i = 0; i < cloud->points.size(); ++i) {
     Json::Value point;
@@ -79,7 +83,11 @@ int main(int argc, char **argv) {
     double n_x = n->FirstChildElement("slam")->DoubleAttribute("x");
     double n_y = n->FirstChildElement("slam")->DoubleAttribute("y");
     double n_z = n->FirstChildElement("slam")->DoubleAttribute("z");
+    double n_qx = n->FirstChildElement("slam")->DoubleAttribute("qx");
+    double n_qy = n->FirstChildElement("slam")->DoubleAttribute("qy");
+    double n_qz = n->FirstChildElement("slam")->DoubleAttribute("qz");
+    double n_qw = n->FirstChildElement("slam")->DoubleAttribute("qw");
     std::string pcd_file(n->Attribute("cloud_filename"));
-    pcd_to_json(directory + "/" + pcd_file, n_x, n_y, n_z);
+    pcd_to_json(directory + "/" + pcd_file, n_x, n_y, n_z, n_qx, n_qy, n_qz, n_qw);
   }
 }
