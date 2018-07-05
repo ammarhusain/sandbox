@@ -8,6 +8,9 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <random>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <sensor_msgs/CompressedImage.h>
 
 int pcd_to_json(std::string pcd_file, double x, double y, double z, double qx, double qy, double qz, double qw) {
   size_t lastindex = pcd_file.find_last_of(".");
@@ -58,7 +61,7 @@ int pcd_to_json(std::string pcd_file, double x, double y, double z, double qx, d
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
+  if (argc != 3) {
     std::cerr << "Enter a slam file to parse: ./pcd-to-json <file.pcd>"
               << std::endl;
     return 0;
@@ -74,6 +77,20 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  // Now open the bag file
+  rosbag::Bag bag;
+  bag.open(argv[2], rosbag::bagmode::Read);
+
+  std::vector<std::string> topics;
+  topics.push_back(
+      std::string("/perception_cam_forward_left/image_rect/compressed"));
+  topics.push_back(
+      std::string("/perception_cam_forward_right/image_rect/compressed"));
+  topics.push_back(std::string("/rs_front_forward/color/image_raw/compressed"));
+
+  rosbag::View view(bag, rosbag::TopicQuery(topics));
+
+  // rosbag::MessageInstance const m;
   // tinyxml2::XMLNode* slam_xml.FirstChild()
 
   tinyxml2::XMLElement *node_root =
