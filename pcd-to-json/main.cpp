@@ -85,6 +85,15 @@ int pcd_to_json(std::string pcd_file, double x, double y, double z, double qx, d
   img_info["heading"]["z"] = qz;
   img_info["heading"]["w"] = qw;
   img_info["image_url"] = "https://s3-us-west-2.amazonaws.com/marble-image-labeling/scale_drivable_05_22_1/" + img_name;
+  img_info["fx"] = 1;
+  img_info["fy"] = 1;
+  img_info["cx"] = 1;
+  img_info["cy"] = 1;
+  img_info["skew"] = 1;
+  img_info["k1"] = 1;
+  img_info["k2"] = 1;
+  img_info["k3"] = 1;
+  img_info["scale_factor"] = 1;
   root["images"].append(img_info);
 
   std::ofstream json_file;
