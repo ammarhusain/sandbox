@@ -1,7 +1,7 @@
 # Import TensorFlow >= 1.9 and enable eager execution
 import tensorflow as tf
 
-# Note: Once you enable eager execution, it cannot be disabled. 
+# Note: Once you enable eager execution, it cannot be disabled.
 tf.enable_eager_execution()
 
 import numpy as np
@@ -30,13 +30,13 @@ max_length = 100
 # length of the vocabulary in chars
 vocab_size = len(unique)
 
-# the embedding dimension 
+# the embedding dimension
 embedding_dim = 256
 
 # number of RNN (here GRU) units
 units = 1024
 
-# batch size 
+# batch size
 BATCH_SIZE = 64
 
 # buffer size to shuffle our dataset
@@ -51,7 +51,7 @@ for f in range(0, len(text)-max_length, max_length):
 
     input_text.append([char2idx[i] for i in inps])
     target_text.append([char2idx[t] for t in targ])
-    
+
 print (np.array(input_text).shape)
 print (np.array(target_text).shape)
 
@@ -68,23 +68,23 @@ class Model(tf.keras.Model):
     self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
 
     if tf.test.is_gpu_available():
-      self.gru = tf.keras.layers.CuDNNGRU(self.units, 
-                                          return_sequences=True, 
-                                          return_state=True, 
+      self.gru = tf.keras.layers.CuDNNGRU(self.units,
+                                          return_sequences=True,
+                                          return_state=True,
                                           recurrent_initializer='glorot_uniform')
     else:
-      self.gru = tf.keras.layers.GRU(self.units, 
-                                     return_sequences=True, 
-                                     return_state=True, 
-                                     recurrent_activation='sigmoid', 
+      self.gru = tf.keras.layers.GRU(self.units,
+                                     return_sequences=True,
+                                     return_state=True,
+                                     recurrent_activation='sigmoid',
                                      recurrent_initializer='glorot_uniform')
 
     self.fc = tf.keras.layers.Dense(vocab_size)
-        
+
   def call(self, x, hidden):
     x = self.embedding(x)
 
-    # output shape == (batch_size, max_length, hidden_size) 
+    # output shape == (batch_size, max_length, hidden_size)
     # states shape == (batch_size, hidden_size)
 
     # states variable to preserve the state of the model
@@ -116,21 +116,21 @@ EPOCHS = 30
 
 for epoch in range(EPOCHS):
     start = time.time()
-    
+
     # initializing the hidden state at the start of every epoch
     hidden = model.reset_states()
-    
+
     for (batch, (inp, target)) in enumerate(dataset):
           with tf.GradientTape() as tape:
               # feeding the hidden state back into the model
               # This is the interesting step
               predictions, hidden = model(inp, hidden)
-              
-              # reshaping the target because that's how the 
+
+              # reshaping the target because that's how the
               # loss function expects it
               target = tf.reshape(target, (-1,))
               loss = loss_function(target, predictions)
-              
+
           grads = tape.gradient(loss, model.variables)
           optimizer.apply_gradients(zip(grads, model.variables), global_step=tf.train.get_or_create_global_step())
 
@@ -138,6 +138,6 @@ for epoch in range(EPOCHS):
               print ('Epoch {} Batch {} Loss {:.4f}'.format(epoch+1,
                                                             batch,
                                                             loss))
-    
+
     print ('Epoch {} Loss {:.4f}'.format(epoch+1, loss))
     print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
