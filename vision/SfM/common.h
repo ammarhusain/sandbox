@@ -16,3 +16,11 @@ std::vector<cv::Mat> open_images(const std::string& dir_name, const std::vector<
 bool has_ending_lower (std::string full_string, const std::string& ending);
 
 bool has_ending (const std::string& full_string, const std::string& ending);
+
+
+#define CV_PROFILE(msg,code)	{\
+	std::cout << msg << " ";\
+	double __time_in_ticks = (double)cv::getTickCount();\
+	{ code }\
+	std::cout << "DONE " << ((double)cv::getTickCount() - __time_in_ticks)/cv::getTickFrequency() << "s" << std::endl;\
+}
