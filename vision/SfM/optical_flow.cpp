@@ -2,12 +2,19 @@
 
 void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<cv::DMatch>& matches) {
   std::vector<cv::KeyPoint> left_keypoints, right_keypoints;
-   cv::FAST(left_img, left_keypoints, 10);
-   cv::FAST(right_img, right_keypoints, 10);
+  cv::FAST(left_img, left_keypoints, 10);
+  cv::FAST(right_img, right_keypoints, 10);
 
-   std::vector<cv::Point2f> l_pts;
-   cv::KeyPoint::convert(left_keypoints,l_pts);
-
+  std::vector<cv::Point2f> l_pts;
+  cv::KeyPoint::convert(left_keypoints,l_pts);
+  cv::Mat left_img_k;
+  cv::Mat right_img_k;
+  cv::drawKeypoints(left_img, left_keypoints, left_img_k);
+  cv::drawKeypoints(right_img, right_keypoints, right_img_k);
+  // cv::imshow("left_key", left_img_k);
+  // cv::waitKey(0);
+  // cv::imshow("right_key", right_img_k);
+  // cv::waitKey(0);
    std::vector<cv::Point2f> r_pts(l_pts.size());
 
    // making sure images are grayscale
@@ -37,6 +44,13 @@ void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<c
      }
    }
 
+  std::vector<cv::KeyPoint> of_keypoints;
+
+  // cv::KeyPoint::convert(to_find, of_keypoints);
+  // cv::drawKeypoints(right_img, of_keypoints, right_img_k);
+  // cv::imshow("right_key_of", right_img_k);
+  // cv::waitKey(0);
+
    std::set<int> found_in_imgpts_r;
    cv::Mat to_find_flat = cv::Mat(to_find).reshape(1, to_find.size());
 
@@ -48,7 +62,8 @@ void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<c
    // FlannBasedMatcher matcher;
    cv::BFMatcher matcher(CV_L2);
    CV_PROFILE("RadiusMatch", matcher.radiusMatch(to_find_flat, r_pts_flat, knn_matches, 2.0f);)
-   CV_PROFILE("Prune", for (int i = 0; i < knn_matches.size(); i++) {
+   // CV_PROFILE("Prune",
+              for (int i = 0; i < knn_matches.size(); i++) {
      cv::DMatch mtch;
      if (knn_matches[i].size() == 1) {
        mtch = knn_matches[i][0];
@@ -67,11 +82,12 @@ void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<c
        matches.push_back(mtch);
        found_in_imgpts_r.insert(mtch.trainIdx);
      }
-   })
+   }// )
 
    // draw flow field
    cv::Mat img_matches;
-   cv::cvtColor(left_img, img_matches, CV_GRAY2BGR);
+   img_matches = left_img;
+   // cv::cvtColor(left_img, img_matches, CV_GRAY2BGR);
    l_pts.clear();
    r_pts.clear();
    for (int i = 0; i < matches.size(); i++) {
@@ -84,12 +100,12 @@ void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<c
      r_pts.push_back(r_pt);
      vstatus[i] = 1;
    }
-   // drawArrows(img_matches, l_pts, r_pts, vstatus, verror, Scalar(0, 255));
+   draw_arrows(img_matches, l_pts, r_pts, vstatus, verror);
    std::stringstream ss;
    ss << matches.size() << " matches";
    ss.clear();
    ss << "flow_field_" <<  ".png";
-   imshow(ss.str(), img_matches);
+   cv::imshow(ss.str(), img_matches);
    int c = cv::waitKey(0);
    if (c == 's') {
      cv::imwrite(ss.str(), img_matches);
