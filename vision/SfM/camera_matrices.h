@@ -29,12 +29,19 @@ cv::Mat EpipolarFeatureRefinement(const std::vector<cv::KeyPoint>& kps1,
 double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Point2f>& pts1, const cv::Matx34d& P2,
                                 const std::vector<cv::Point2f>& pts2, const cv::Mat& K, const cv::Mat& distortion_coeff);
 
-cv::Mat_<double> LinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
-                                       cv::Matx34d P2, double w1 = 1.0, double w2 = 1.0);
+// cv::Mat_<double> LinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
+//                                        cv::Matx34d P2, double w1 = 1.0, double w2 = 1.0);
 
-// Implementation based on: https://users.cecs.anu.edu.au/~hartley/Papers/triangulation/triangulation.pdf
-cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
-                                                cv::Matx34d P2);
+// // Implementation based on: https://users.cecs.anu.edu.au/~hartley/Papers/triangulation/triangulation.pdf
+// cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
+//                                                 cv::Matx34d P2);
 
 
 bool DecomposeEtoRT(cv::Mat E, cv::Mat_<double>& R1, cv::Mat_<double>&  R2, cv::Mat_<double>& t1, cv::Mat_<double>& t2);
+
+#define EPSILON 0.0001
+cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1,
+                                       cv::Matx34d P1);
+
+cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1,
+                                                cv::Matx34d P1);
