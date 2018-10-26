@@ -11,4 +11,4 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "common.h"
 
-void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<cv::DMatch>& matches);
+void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<cv::DMatch>& matches, std::vector<cv::KeyPoint>& l_kps, std::vector<cv::KeyPoint>& r_kps);

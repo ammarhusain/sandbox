@@ -27,15 +27,16 @@ int main(int argc, char** argv) {
   /** ------------------------------------------------------ */
   // Go through images
   for (int i = 0; i < images.size() - 1; ++i) {
-    // MatchOpticalFlowFeatures(images[i], images[i+1], matches);
     std::vector<cv::DMatch> matches;
     std::vector<cv::KeyPoint> l_kps, r_kps;
-    MatchRichFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
+     MatchRichFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
+     // MatchOpticalFlowFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
 
     cv::Mat viz_img;
     std::vector<cv::Point2f> i_pts, j_pts;
 
-    {   // draw original features in red
+    {
+      // draw original features in red
       std::vector<cv::KeyPoint> a_l_kps, a_r_kps;
       AlignPointsForMatch(l_kps, r_kps, matches, a_l_kps, a_r_kps);
       cv::KeyPoint::convert(a_l_kps, i_pts);
@@ -63,38 +64,50 @@ int main(int argc, char** argv) {
       // if (disp > 2 && disp < 15) {
       i_pts.push_back(l_good_kps[i].pt);
       j_pts.push_back(r_good_kps[i].pt);
-      refined_matches.push_back(cv::DMatch(i_pts.size()-1, j_pts.size()-1, 0.0));
+      refined_matches.push_back(cv::DMatch(i_pts.size() - 1, j_pts.size() - 1, 0.0));
       //}
     }
+
+    //
+
     {
       std::vector<uchar> vstatus(l_kps.size(), 1);
       std::vector<float> verror(l_kps.size(), 1.0);
       draw_arrows(viz_img, i_pts, j_pts, vstatus, verror, cv::Scalar(0, 255, 0));
-      cv::imshow("Filtered Matches", viz_img);
+      std::stringstream ss;
+      ss << "filtered_matches_" << i_pts.size() << ".png";
+      cv::imshow(ss.str(), viz_img);
+      int c = cv::waitKey(0);
+      if (c == 's') {
+        cv::imwrite(ss.str(), viz_img);
+      }
+      cv::destroyWindow(ss.str());
     }
 
     {
-    //-- Draw only "good" matches: shuffle & draw a random 100
+      //-- Draw only "good" matches: shuffle & draw a random 100
       std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(refined_matches.begin(), refined_matches.end(), g);
-    refined_matches.resize(20);
-    cv::drawMatches(images[i], l_kps, images[i+1], r_kps, refined_matches, viz_img,
-                    cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
-                    cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-    //-- Show detected matches
-    std::stringstream ss;
-    ss << "Feature Matches ";
-    cv::imshow(ss.str(), viz_img);
-    cv::waitKey(0);
-    cv::destroyWindow(ss.str());
-  }
-
-    int c = cv::waitKey(0);
-    if (c == 's') {
-      cv::imwrite("fundamental_mat_matches.png", viz_img);
+      std::mt19937 g(rd());
+      std::shuffle(refined_matches.begin(), refined_matches.end(), g);
+      refined_matches.resize(10);
+      cv::drawMatches(images[i], l_good_kps, images[i + 1], r_good_kps, refined_matches, viz_img,
+                      cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
+                      cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+      // std::shuffle(matches.begin(), matches.end(), g);
+      // matches.resize(10);
+      // cv::drawMatches(images[i], l_kps, images[i + 1], r_kps, matches, viz_img,
+      //                 cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
+      //                 cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+      //-- Show detected matches
+      std::stringstream ss;
+      ss << "feature_matches.png";
+      cv::imshow(ss.str(), viz_img);
+      int c = cv::waitKey(0);
+      if (c == 's') {
+        cv::imwrite(ss.str(), viz_img);
+      }
+      cv::destroyWindow(ss.str());
     }
-    cv::destroyWindow("Filtered Matches");
 
     // Triangulation
     // Split F to compute E, then R & T
@@ -105,37 +118,38 @@ int main(int argc, char** argv) {
 
     DecomposeEtoRT(E, R1, R2, t1, t2);
 
+    // shrink pts for debugging
+    // i_pts.resize(6);
+    // j_pts.resize(6);
+
     // Use opencv triangulation
     cv::Matx34d P1(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
     cv::Matx34d P2(R1(0, 0), R1(0, 1), R1(0, 2), t1(0), R1(1, 0), R1(1, 1), R1(1, 2), t1(1),
                    R1(2, 0), R1(2, 1), R1(2, 2), t1(2));
+    double cr1, cr2;
 
-    // std::cout << "#1 " << std::endl << P1 << std::endl;
-    std::cout << "error: " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << "   " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << std::endl;
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
                      R1(2, 0), R1(2, 1), R1(2, 2), t2(2));
-    //std::cout << "#2 " << std::endl << P1 << std::endl;
-    std::cout << "error: " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << "   " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << std::endl;
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
+    cr2 =ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
                      R2(2, 0), R2(2, 1), R2(2, 2), t1(2));
-    ///=std::cout << "#3 " << std::endl << P1 << std::endl;
-    std::cout << "error: " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << "   " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << std::endl;
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
                      R2(2, 0), R2(2, 1), R2(2, 2), t2(2));
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
-    //std::cout << "#4 " << std::endl << P1 << std::endl;
-    std::cout << "error: " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << "   " << ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff)
-              << std::endl;
   }
   return 1;
 }
