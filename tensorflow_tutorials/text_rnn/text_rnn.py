@@ -115,8 +115,8 @@ def loss_function(real, preds):
 EPOCHS = 30
 
 for epoch in range(EPOCHS):
-    start = time.time()
 
+    start = time.time()
     # initializing the hidden state at the start of every epoch
     hidden = model.reset_states()
 
@@ -125,7 +125,6 @@ for epoch in range(EPOCHS):
               # feeding the hidden state back into the model
               # This is the interesting step
               predictions, hidden = model(inp, hidden)
-
               # reshaping the target because that's how the
               # loss function expects it
               target = tf.reshape(target, (-1,))
@@ -138,6 +137,5 @@ for epoch in range(EPOCHS):
               print ('Epoch {} Batch {} Loss {:.4f}'.format(epoch+1,
                                                             batch,
                                                             loss))
-
     print ('Epoch {} Loss {:.4f}'.format(epoch+1, loss))
     print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
