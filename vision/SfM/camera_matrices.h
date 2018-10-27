@@ -40,6 +40,7 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
 bool DecomposeEtoRT(cv::Mat E, cv::Mat_<double>& R1, cv::Mat_<double>&  R2, cv::Mat_<double>& t1, cv::Mat_<double>& t2);
 
 #define EPSILON 0.0001
+#define MY_TRIANGULATE 0
 cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1,
                                        cv::Matx34d P1);
 

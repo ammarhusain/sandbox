@@ -63,6 +63,7 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
                                 const cv::Matx34d& P2, const std::vector<cv::Point2f>& pts2,
                                 const cv::Mat& K, const cv::Mat& distortion_coeff) {
 
+#ifndef MY_TRIANGULATE
   std::vector<cv::Point2f> pts1_u, pts2_u;
   cv::undistortPoints(pts1, pts1_u, K, distortion_coeff, cv::noArray(), K);
   cv::undistortPoints(pts2, pts2_u, K, distortion_coeff, cv::noArray(), K);
@@ -119,6 +120,40 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
     reproj_error.push_back(norm(pts2[i] - reprojected_pt_set1[i]));
   }
   return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
+#else
+  std::vector<double> reproj_error;
+  cv::Mat_<double> KP1 = K * cv::Mat(P1);
+  cv::Mat Kinv = K.inv();
+  for (int i = 0; i < pts1.size(); i++) {
+    cv::Point2f kp = pts1[i];
+    cv::Point3d u(kp.x, kp.y, 1.0);
+    cv::Mat_<double> um = Kinv * cv::Mat_<double>(u);
+    u.x             = um(0);
+    u.y             = um(1);
+    u.z             = um(2);
+
+    cv::Point2f kp1 = pts2[i];
+    cv::Point3d u1(kp1.x, kp1.y, 1.0);
+    cv::Mat_<double> um1 = Kinv * cv::Mat_<double>(u1);
+    u1.x             = um1(0);
+    u1.y             = um1(1);
+    u1.z             = um1(2);
+
+    cv::Mat_<double> X = IterativeLinearLSTriangulation(u, P1, u1, P2);
+
+    std::cout << "3D Point: " << X << std::endl;
+    //		Mat_<double> x = Mat(P1) * X;
+    //		cout <<	"P1 * Point: " << x << endl;
+    //		Mat_<double> xPt = (Mat_<double>(3,1) << x(0),x(1),x(2));
+    //		cout <<	"Point: " << xPt << endl;
+    cv::Mat_<double> xPt_img = KP1 * X;   // reproject
+    //		cout <<	"Point * K: " << xPt_img << endl;
+    cv::Point2f xPt_img_(xPt_img(0) / xPt_img(2), xPt_img(1) / xPt_img(2));
+    double reprj_err = norm(xPt_img_ - kp1);
+    reproj_error.push_back(reprj_err);
+  }
+  return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
+#endif
 }
 
 /**
