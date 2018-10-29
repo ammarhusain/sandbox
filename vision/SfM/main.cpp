@@ -128,26 +128,26 @@ int main(int argc, char** argv) {
                    R1(2, 0), R1(2, 1), R1(2, 2), t1(2));
     double cr1, cr2;
 
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
     std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
                      R1(2, 0), R1(2, 1), R1(2, 2), t2(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
-    cr2 =ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
+    cr2 =ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
     std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
                      R2(2, 0), R2(2, 1), R2(2, 2), t1(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
     std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
     P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
                      R2(2, 0), R2(2, 1), R2(2, 2), t2(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff);
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
     std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
   }
