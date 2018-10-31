@@ -29,8 +29,8 @@ int main(int argc, char** argv) {
   for (int i = 0; i < images.size() - 1; ++i) {
     std::vector<cv::DMatch> matches;
     std::vector<cv::KeyPoint> l_kps, r_kps;
-     MatchRichFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
-     // MatchOpticalFlowFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
+    MatchRichFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
+    // MatchOpticalFlowFeatures(images[i], images[i + 1], matches, l_kps, r_kps);
 
     cv::Mat viz_img;
     std::vector<cv::Point2f> i_pts, j_pts;
@@ -127,29 +127,48 @@ int main(int argc, char** argv) {
     cv::Matx34d P2(R1(0, 0), R1(0, 1), R1(0, 2), t1(0), R1(1, 0), R1(1, 1), R1(1, 2), t1(1),
                    R1(2, 0), R1(2, 1), R1(2, 2), t1(2));
     double cr1, cr2;
-
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
+    std::vector<cv::Point3d> triangulated_pts1, triangulated_pts2;
+    std::vector<uchar> triangulation_status;
+    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, triangulated_pts1);
+    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, triangulated_pts2);
     std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
-    P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
-                     R1(2, 0), R1(2, 1), R1(2, 2), t2(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
-    cr2 =ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
-    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-
-    P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
-                     R2(2, 0), R2(2, 1), R2(2, 2), t1(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
-    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-
-    P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
-                     R2(2, 0), R2(2, 1), R2(2, 2), t2(2));
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, images[i]);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, images[i]);
-    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-
+    if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+        !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
+        cr2 > 100.0) {
+      P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
+                       R1(2, 0), R1(2, 1), R1(2, 2), t2(2));
+      cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, triangulated_pts1);
+      cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, triangulated_pts2);
+      std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
+      if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+          !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
+          cr2 > 100.0) {
+        P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
+                         R2(2, 0), R2(2, 1), R2(2, 2), t1(2));
+        cr1 =
+            ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff, triangulated_pts1);
+        cr2 =
+            ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff, triangulated_pts2);
+        std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
+        if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+            !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
+            cr2 > 100.0) {
+          P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
+                           R2(2, 0), R2(2, 1), R2(2, 2), t2(2));
+          cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K, distortion_coeff,
+                                         triangulated_pts1);
+          cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K, distortion_coeff,
+                                         triangulated_pts2);
+          std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
+          if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+              !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
+              cr2 > 100.0) {
+            std::cout << "All 4 disambiguations failed to triangulate!!\n";
+          }
+        }
+      }
+    }
   }
   return 1;
 }

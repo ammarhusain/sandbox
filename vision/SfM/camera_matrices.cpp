@@ -61,7 +61,8 @@ cv::Mat EpipolarFeatureRefinement(const std::vector<cv::KeyPoint>& kps1,
 
 double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Point2f>& pts1,
                                 const cv::Matx34d& P2, const std::vector<cv::Point2f>& pts2,
-                                const cv::Mat& K, const cv::Mat& distortion_coeff, const cv::Mat& left_img) {
+                                const cv::Mat& K, const cv::Mat& distortion_coeff,
+                                std::vector<cv::Point3d>& triangulated_pts) {
 
 #ifndef MY_TRIANGULATE
   std::vector<cv::Point2f> pts1_u, pts2_u;
@@ -143,7 +144,10 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
 
     cv::Mat_<double> X = IterativeLinearLSTriangulation(u, P1, u2, P2);
 
-    // std::cout << "3D Point: " << X << std::endl;
+    cv::Mat_<double> X_2 = IterativeLinearLSTriangulation_AH(u, P1, u2, P2);
+
+    std::cout << "3D Point X: " << X.t() << "X_AH: " << X_2.t() << std::endl;
+
     //		Mat_<double> x = Mat(P1) * X;
     //		cout <<	"P1 * Point: " << x << endl;
     //		Mat_<double> xPt = (Mat_<double>(3,1) << x(0),x(1),x(2));
@@ -154,25 +158,26 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
     double reprj_err = norm(xPt_img_ - kp2);
     reproj_error.push_back(reprj_err);
     reprojected_pts.push_back(xPt_img_);
+    triangulated_pts.push_back(cv::Point3d(X(0)/X(3), X(1)/X(3), X(2)/X(3)));
   }
 
   // visualize the point projections
-  {
-    cv::Mat viz_img = left_img;
-    for (size_t i = 0; i < reprojected_pts.size(); ++i) {
-      cv::circle(viz_img, reprojected_pts[i], 2, cv::Scalar(0, 0, 255));
-      cv::circle(viz_img, pts2[i], 2, cv::Scalar(0, 255, 0));
+  // {
+  //   cv::Mat viz_img = left_img;
+  //   for (size_t i = 0; i < reprojected_pts.size(); ++i) {
+  //     cv::circle(viz_img, reprojected_pts[i], 2, cv::Scalar(0, 0, 255));
+  //     cv::circle(viz_img, pts2[i], 2, cv::Scalar(0, 255, 0));
 
-    }
-    std::stringstream ss;
-    ss << "reprojected_pts_"  << ".png";
-    cv::imshow(ss.str(), viz_img);
-    int c = cv::waitKey(0);
-    if (c == 's') {
-      cv::imwrite(ss.str(), viz_img);
-    }
-    cv::destroyWindow(ss.str());
-  }
+  //   }
+  //   std::stringstream ss;
+  //   ss << "reprojected_pts_"  << ".png";
+  //   cv::imshow(ss.str(), viz_img);
+  //   int c = cv::waitKey(0);
+  //   if (c == 's') {
+  //     cv::imwrite(ss.str(), viz_img);
+  //   }
+  //   cv::destroyWindow(ss.str());
+  // }
 
   return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
 #endif
@@ -197,49 +202,32 @@ cv::Mat_<double> LinearLSTriangulation_AH(cv::Point3d kp1, cv::Matx34d P1, cv::P
   // build matrix A for homogenous equation system Ax = 0
   // assume X = (x,y,z,1), for Linear-LS method
   // which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
-
-  cv::Mat tmp(((kp1.x * P1.row(2).t() - P1.row(0).t()).t()).t());
-  cv::Mat A(4, 4, CV_64FC1, 0.0);
+  cv::Mat eqs(4, 4, CV_64FC1, 0.0);
   // set the 4 equations.
-  // A.row(0) << 1,2,3,4;
-  // A.row(1) =  cv::Mat_<double>(1, 4) << ((kp1.x*P1.row(2).t() - P1.row(0).t()).t()).t();
+  cv::Mat((1 / w1) * (kp1.x * P1.row(2).t() - P1.row(0).t()).t()).copyTo(eqs.row(0));
+  cv::Mat((1 / w1) * (kp1.y * P1.row(2).t() - P1.row(1).t()).t()).copyTo(eqs.row(1));
+  cv::Mat((1 / w2) * (kp2.x * P2.row(2).t() - P2.row(0).t()).t()).copyTo(eqs.row(2));
+  cv::Mat((1 / w2) * (kp2.y * P2.row(2).t() - P2.row(1).t()).t()).copyTo(eqs.row(3));
 
-  cv::Mat((1 / w1) * (kp1.x * P1.row(2).t() - P1.row(0).t()).t()).copyTo(A.row(0));
-  cv::Mat((1 / w1) * (kp1.y * P1.row(2).t() - P1.row(1).t()).t()).copyTo(A.row(1));
-  cv::Mat((1 / w2) * (kp2.x * P1.row(2).t() - P1.row(0).t()).t()).copyTo(A.row(2));
-  cv::Mat((1 / w2) * (kp2.y * P1.row(2).t() - P1.row(1).t()).t()).copyTo(A.row(3));
+  cv::Mat A(4,3, CV_64FC1);
+  // A = eqs.colRange(0, 2);
+  cv::Mat(eqs.col(0)).copyTo(A.col(0));
+  cv::Mat(eqs.col(1)).copyTo(A.col(1));
+  cv::Mat(eqs.col(2)).copyTo(A.col(2));
 
-  cv::Matx41d B(0.0);
+  cv::Mat B(4,1, CV_64FC1);
+  cv::Mat(eqs.col(3)).copyTo(B.col(0));
+  // Since the equation is Ax = B, the sign of B should be flipped to move it over to the other side.
+  B = -1.0*B;
   cv::Mat_<double> X;
   cv::solve(A, B, X, cv::DECOMP_SVD);
 
-  std::cout << "A\n";
-  std::cout << A << std::endl;
-  std::cout << "B\n";
-  std::cout << B << std::endl;
-  std::cout << "X\n";
-  std::cout << X << std::endl;
+  // cv::Mat Bz(4,1, CV_64FC1, 0.0);
+  // cv::Mat_<double> Xz;
+  // cv::solve(eqs, Bz, Xz, cv::DECOMP_LU);
 
-  // cv::Matx43d Ab(kp1.x * P1(2, 0) - P1(0, 0), kp1.x * P1(2, 1) - P1(0, 1), kp1.x * P1(2, 2) -
-  // P1(0, 2),
-  //           kp1.y * P1(2, 0) - P1(1, 0), kp1.y * P1(2, 1) - P1(1, 1), kp1.y * P1(2, 2) - P1(1,
-  //           2),
-  //           kp2.x * P2(2, 0) - P2(0, 0), kp2.x * P2(2, 1) - P2(0, 1), kp2.x * P2(2, 2) - P2(0,
-  //           2),
-  //           kp2.y * P2(2, 0) - P2(1, 0), kp2.y * P2(2, 1) - P2(1, 1), kp2.y * P2(2, 2) - P2(1,
-  //           2));
-  // cv::Matx41d Bb(-(kp1.x * P1(2, 3) - P1(0, 3)), -(kp1.y * P1(2, 3) - P1(1, 3)),
-  //           -(kp2.x * P2(2, 3) - P2(0, 3)), -(kp2.y * P2(2, 3) - P2(1, 3)));
-
-  // cv::Mat_<double> Xb;
-  // cv::solve(Ab, Bb, Xb, cv::DECOMP_SVD);
-
-  // std::cout << "Ab\n";
-  // std::cout << Ab << std::endl;
-  // std::cout << "Bb\n";
-  // std::cout << Bb << std::endl;
-  // std::cout << "Xb\n";
-  // std::cout << Xb << std::endl;
+  // std::cout << "XAhZ\n";
+  // std::cout << Xz << std::endl;
 
   return X;
 }
@@ -247,27 +235,28 @@ cv::Mat_<double> LinearLSTriangulation_AH(cv::Point3d kp1, cv::Matx34d P1, cv::P
 cv::Mat_<double> IterativeLinearLSTriangulation_AH(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
                                                 cv::Matx34d P2) {
   double w1 = 1, w2 = 1;
-  cv::Mat_<double> X(4, 1);
-  for (int i = 0; i < 10; ++i) {
+  cv::Mat_<double> X(3, 1), HX(4,1);
+      for (int i = 0; i < 10; ++i) {
+        //for (int i = 0; i < 1; ++i) {
     X = LinearLSTriangulation_AH(kp1, P1, kp2, P2, w1, w2);
-    // Renormalize X?
-    X(3) = 1.0;
 
-    std::cout << i << "  "
-              << "P1_3TX " << P1.row(2) << "  P2_3TX  " << X << std::endl;
+    // Convert to homogeneous coordinates;
+    HX << X(0), X(1), X(2), 1.0;
 
-    double P1_3TX = P1.row(2).t().dot(X);
-    double P2_3TX = P2.row(2).t().dot(X);
+    double P1_3TX = P1.row(2).t().dot(HX);
+    double P2_3TX = P2.row(2).t().dot(HX);
 
     std::cout << i << "  "
               << "P1_3TX " << P1_3TX << "  P2_3TX  " << P2_3TX << std::endl;
 
-    // if (fabsf(w1 - P1_3TX) <= 0.0001 && fabsf(w2 - P2_3TX) <= 0.0001) break;
+    // breaking point
+    if (fabsf(w1 - P1_3TX) <= EPSILON && fabsf(w2 - P2_3TX) <= EPSILON)
+      break;
 
     w1 = P1_3TX;
     w2 = P2_3TX;
   }
-  return X;
+  return HX;
 }
 
 bool DecomposeEtoRT(cv::Mat E, cv::Mat_<double>& R1, cv::Mat_<double>& R2, cv::Mat_<double>& t1,
@@ -369,6 +358,9 @@ IterativeLinearLSTriangulation(cv::Point3d u,    // homogenous image point (u,v,
     double p2x  = cv::Mat_<double>(cv::Mat_<double>(P).row(2) * X)(0);
     double p2x1 = cv::Mat_<double>(cv::Mat_<double>(P1).row(2) * X)(0);
 
+    std::cout << i << "  "
+              << "p2x " << p2x << "  p2x1  " << p2x1 << std::endl;
+
     // breaking point
     if (fabsf(wi - p2x) <= EPSILON && fabsf(wi1 - p2x1) <= EPSILON)
       break;
@@ -394,4 +386,28 @@ IterativeLinearLSTriangulation(cv::Point3d u,    // homogenous image point (u,v,
     X(3) = 1.0;
   }
   return X;
+}
+
+bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const cv::Matx34d& P,
+                       std::vector<uchar>& status) {
+  std::vector<cv::Point3d> pcloud_pt3d_projected(triangulated_pts.size());
+
+  cv::Matx44d P4x4 = cv::Matx44d::eye();
+  for (int i    = 0; i < 12; i++)
+    P4x4.val[i] = P.val[i];
+
+  perspectiveTransform(triangulated_pts, pcloud_pt3d_projected, P4x4);
+
+  status.resize(triangulated_pts.size(), 0);
+  for (int i = 0; i < triangulated_pts.size(); i++) {
+    status[i] = (pcloud_pt3d_projected[i].z > 0) ? 1 : 0;
+  }
+  int count = cv::countNonZero(status);
+
+  double percentage = ((double) count / (double) triangulated_pts.size());
+  std::cout << count << "/" << triangulated_pts.size() << " = " << percentage * 100.0
+            << "% are in front of camera" << std::endl;
+  if (percentage < 0.75)
+    return false;   // less than 75% of the points are in front of the camera
+  return true;
 }
