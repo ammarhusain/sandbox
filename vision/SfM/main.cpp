@@ -1,3 +1,4 @@
+#include "triangulation.h"
 #include "camera_matrices.h"
 #include "common.h"
 #include "optical_flow.h"
