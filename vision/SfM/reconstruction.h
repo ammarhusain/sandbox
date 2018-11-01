@@ -19,5 +19,6 @@ private:
   std::map<int,cv::Matx34d> P_mats_;
   cv::Mat K_;
   cv::Mat distortion_coeff_;
-  std::map<std::pair<int, int>, std::tuple<std::vector<cv::DMatch>, cv::Mat>> matches_matrix_;
+  std::map<std::pair<int, int>, std::tuple<std::vector<cv::DMatch>, cv::Mat>> correspondence_matrix_;
+  std::unordered_map<int, std::vector<cv::Point2f>> img_pts_;
 };

@@ -38,7 +38,10 @@ void Reconstruction::process() {
       //}
     }
 
-    matches_matrix_.insert(std::make_pair(std::make_pair(i, i+1), std::make_tuple(refined_matches, F)));
+    correspondence_matrix_.insert(std::make_pair(std::make_pair(i, i+1), std::make_tuple(refined_matches, F)));
+    img_pts_.insert(std::make_pair(i, i_pts));
+    img_pts_.insert(std::make_pair(i+1, j_pts));
+
 
     {
       images_[i].copyTo(viz_img);
@@ -74,6 +77,15 @@ void Reconstruction::process() {
       }
       cv::destroyWindow(ss.str());
     }
+
+  }
+
+  // Iterate over the correspondences datastructure to start processing
+  for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end(); ++crsp_itr) {
+    // Extract data from the matches containers.
+    cv::Mat F = std::get<1>(crsp_itr->second);
+    std::vector<cv::Point2f> i_pts = img_pts_[std::get<0>(crsp_itr->first)];
+    std::vector<cv::Point2f> j_pts = img_pts_[std::get<1>(crsp_itr->first)];
 
     // Split F to compute E, then R & T
     // Essential matrix: compute then extract cameras [R|t]
