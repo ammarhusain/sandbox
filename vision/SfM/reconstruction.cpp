@@ -38,6 +38,8 @@ void Reconstruction::process() {
       //}
     }
 
+    matches_matrix_.insert(std::make_pair(std::make_pair(i, i+1), std::make_tuple(refined_matches, F)));
+
     {
       images_[i].copyTo(viz_img);
       std::vector<uchar> vstatus(l_kps.size(), 1);
