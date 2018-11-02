@@ -50,9 +50,6 @@ cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P
     double P1_3TX = P1.row(2).t().dot(HX);
     double P2_3TX = P2.row(2).t().dot(HX);
 
-    std::cout << i << "  "
-              << "P1_3TX " << P1_3TX << "  P2_3TX  " << P2_3TX << std::endl;
-
     // breaking point
     if (fabsf(w1 - P1_3TX) <= EPSILON && fabsf(w2 - P2_3TX) <= EPSILON)
       break;
@@ -71,7 +68,14 @@ bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const c
   for (int i    = 0; i < 12; i++)
     P4x4.val[i] = P.val[i];
 
+  std::cout << "P4x4 " << P4x4 << std::endl;
+
   perspectiveTransform(triangulated_pts, pcloud_pt3d_projected, P4x4);
+
+  for (size_t i = 0; i < 10; ++i){
+      // if (cv::norm(triangulated_pts[i]- pcloud_pt3d_projected[i]) > 1e-3)
+        std::cout << "tp1 " << triangulated_pts[i] << "   tp2 " << pcloud_pt3d_projected[i] << std::endl;
+    }
 
   status.resize(triangulated_pts.size(), 0);
   for (int i = 0; i < triangulated_pts.size(); i++) {
@@ -91,6 +95,8 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
                                 const cv::Matx34d& P2, const std::vector<cv::Point2f>& pts2,
                                 const cv::Mat& K, const cv::Mat& distortion_coeff,
                                 std::vector<cv::Point3d>& triangulated_pts) {
+  // Clear the output constainer.
+  triangulated_pts.clear();
 
 #ifndef MY_TRIANGULATE
   std::vector<cv::Point2f> pts1_u, pts2_u;

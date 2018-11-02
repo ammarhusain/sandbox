@@ -43,49 +43,60 @@ void Reconstruction::process() {
     img_pts_.insert(std::make_pair(i+1, j_pts));
 
 
-    {
-      images_[i].copyTo(viz_img);
-      std::vector<uchar> vstatus(l_kps.size(), 1);
-      std::vector<float> verror(l_kps.size(), 1.0);
-      draw_arrows(viz_img, i_pts, j_pts, vstatus, verror, cv::Scalar(0, 255, 0));
-      std::stringstream ss;
-      ss << "filtered_matches_" << i_pts.size() << ".png";
-      cv::imshow(ss.str(), viz_img);
-      int c = cv::waitKey(0);
-      if (c == 's') {
-        cv::imwrite(ss.str(), viz_img);
-      }
-      cv::destroyWindow(ss.str());
-    }
+    // Visualization code
+    // {
+    //   images_[i].copyTo(viz_img);
+    //   std::vector<uchar> vstatus(l_kps.size(), 1);
+    //   std::vector<float> verror(l_kps.size(), 1.0);
+    //   draw_arrows(viz_img, i_pts, j_pts, vstatus, verror, cv::Scalar(0, 255, 0));
+    //   std::stringstream ss;
+    //   ss << "filtered_matches_" << i_pts.size() << ".png";
+    //   cv::imshow(ss.str(), viz_img);
+    //   int c = cv::waitKey(0);
+    //   if (c == 's') {
+    //     cv::imwrite(ss.str(), viz_img);
+    //   }
+    //   cv::destroyWindow(ss.str());
+    // }
 
-    {
-      //-- Draw only "good" matches: shuffle & draw a random 100
-      std::random_device rd;
-      std::mt19937 g(rd());
-      std::shuffle(refined_matches.begin(), refined_matches.end(), g);
-      refined_matches.resize(10);
-      cv::drawMatches(images_[i], l_good_a_kps, images_[i + 1], r_good_a_kps, refined_matches, viz_img,
-                      cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
-                      cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-      //-- Show detected matches
-      std::stringstream ss;
-      ss << "feature_matches.png";
-      cv::imshow(ss.str(), viz_img);
-      int c = cv::waitKey(0);
-      if (c == 's') {
-        cv::imwrite(ss.str(), viz_img);
-      }
-      cv::destroyWindow(ss.str());
-    }
+    // {
+    //   //-- Draw only "good" matches: shuffle & draw a random 100
+    //   std::random_device rd;
+    //   std::mt19937 g(rd());
+    //   std::shuffle(refined_matches.begin(), refined_matches.end(), g);
+    //   refined_matches.resize(10);
+    //   cv::drawMatches(images_[i], l_good_a_kps, images_[i + 1], r_good_a_kps, refined_matches, viz_img,
+    //                   cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
+    //                   cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+    //   //-- Show detected matches
+    //   std::stringstream ss;
+    //   ss << "feature_matches.png";
+    //   cv::imshow(ss.str(), viz_img);
+    //   int c = cv::waitKey(0);
+    //   if (c == 's') {
+    //     cv::imwrite(ss.str(), viz_img);
+    //   }
+    //   cv::destroyWindow(ss.str());
+    // }
+    // Quit for debugging
+    break;
 
   }
+
+  std::cout << "Computing Projection Matrices\n";
+
+  // Add the identity matrix for the very first image to set the origin coordinates.
+  img_P_mats_.insert(std::make_pair(0, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
 
   // Iterate over the correspondences datastructure to start processing
   for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end(); ++crsp_itr) {
     // Extract data from the matches containers.
     cv::Mat F = std::get<1>(crsp_itr->second);
-    std::vector<cv::Point2f> i_pts = img_pts_[std::get<0>(crsp_itr->first)];
-    std::vector<cv::Point2f> j_pts = img_pts_[std::get<1>(crsp_itr->first)];
+    int i_idx = std::get<0>(crsp_itr->first);
+    int j_idx = std::get<1>(crsp_itr->first);
+    std::vector<cv::Point2f> i_pts = img_pts_[i_idx];
+    std::vector<cv::Point2f> j_pts = img_pts_[j_idx];
+    cv::Matx34d P1 = img_P_mats_[i_idx];
 
     // Split F to compute E, then R & T
     // Essential matrix: compute then extract cameras [R|t]
@@ -95,9 +106,7 @@ void Reconstruction::process() {
 
     DecomposeEtoRT(E, R1, R2, t1, t2);
 
-
     // Triangulation
-    cv::Matx34d P1(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
     cv::Matx34d P2(R1(0, 0), R1(0, 1), R1(0, 2), t1(0), R1(1, 0), R1(1, 1), R1(1, 2), t1(1),
                    R1(2, 0), R1(2, 1), R1(2, 2), t1(2));
     double cr1, cr2;
@@ -105,9 +114,17 @@ void Reconstruction::process() {
     std::vector<uchar> triangulation_status;
     cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_, triangulated_pts1);
     cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
-    std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
 
-    if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+    // debug printing
+    std::cout<<"P1\n" << P1 << std::endl;
+    std::cout<<"P2\n" << P2 << std::endl;
+    std::cout<< "tp1: " << triangulated_pts1.size() << "  tp2: " << triangulated_pts2.size() << std::endl;
+    for (size_t i = 0; i < triangulated_pts1.size(); ++i){
+      if (cv::norm(triangulated_pts1[i]- triangulated_pts2[i]) > 1e-3)
+        std::cout << "tp1 " << triangulated_pts1[i] << "   tp2 " << triangulated_pts2[i] << std::endl;
+    }
+
+    if (!TestTriangulation(triangulated_pts2, P1, triangulation_status) ||
         !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
         cr2 > 100.0) {
       P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
@@ -115,7 +132,7 @@ void Reconstruction::process() {
       cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_, triangulated_pts1);
       cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
       std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-      if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+      if (!TestTriangulation(triangulated_pts2, P1, triangulation_status) ||
           !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
           cr2 > 100.0) {
         P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
@@ -125,7 +142,7 @@ void Reconstruction::process() {
         cr2 =
             ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
         std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-        if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+        if (!TestTriangulation(triangulated_pts2, P1, triangulation_status) ||
             !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
             cr2 > 100.0) {
           P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
@@ -135,7 +152,7 @@ void Reconstruction::process() {
           cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_,
                                          triangulated_pts2);
           std::cout << "error: " << cr1 << "   " << cr2 << std::endl;
-          if (!TestTriangulation(triangulated_pts1, P2, triangulation_status) ||
+          if (!TestTriangulation(triangulated_pts2, P1, triangulation_status) ||
               !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
               cr2 > 100.0) {
             std::cout << "All 4 disambiguations failed to triangulate!!\n";
@@ -143,6 +160,11 @@ void Reconstruction::process() {
         }
       }
     }
-  }
 
+    // Store the computed second projection matrix
+    img_P_mats_.insert(std::make_pair(j_idx, P2));
+
+    // Quit for debugging
+    break;
+  }
 }
