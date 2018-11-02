@@ -1,33 +1,33 @@
 #include "rich_feature.h"
 #include "camera_matrices.h"
 
-void MatchRichFeatures(const cv::Mat& left_img, const cv::Mat& right_img, std::vector<cv::DMatch>& matches, std::vector<cv::KeyPoint>& l_kps, std::vector<cv::KeyPoint>& r_kps) {
-  // clear output variable
-  matches.clear(); l_kps.clear(); r_kps.clear();
-
-  cv::Mat left_desc, right_desc;
+void GetFeatures(const cv::Mat& img, std::pair<std::vector<cv::KeyPoint>, cv::Mat>& kps_descriptors) {
+  cv::Ptr<cv::FeatureDetector> detector  = cv::GFTTDetector::create();
+  cv::Ptr<cv::FeatureDetector> extractor = cv::ORB::create();
   // cv::Ptr<cv::FeatureDetector> detector  = cv::FastFeatureDetector::create();
   // cv::Ptr<cv::FeatureDetector> extractor = cv::ORB::create();
 
-  cv::Ptr<cv::FeatureDetector> detector  = cv::GFTTDetector::create();
-  cv::Ptr<cv::FeatureDetector> extractor = cv::ORB::create();
+  kps_descriptors.first.clear();
+  CV_PROFILE("FeatureDetection", detector->detect(img, kps_descriptors.first);
+             extractor->compute(img, kps_descriptors.first, kps_descriptors.second););
 
+  assert(kps_descriptors.first.size() == kps_descriptors.second.rows);
 
-  CV_PROFILE("FeatureDetection", detector->detect(left_img, l_kps);
-             extractor->compute(left_img, l_kps, left_desc);
-             detector->detect(right_img, r_kps);
-             extractor->compute(right_img, r_kps, right_desc););
-  std::cout << "l_kps has " << l_kps.size() << " points (descriptors " << left_desc.rows
+  std::cout << "kps has " << kps_descriptors.first.size() << " points (descriptors " << kps_descriptors.second.rows
             << ")" << std::endl;
-  std::cout << "r_kps has " << r_kps.size() << " points (descriptors " << right_desc.rows
-            << ")" << std::endl;
+}
 
-  if (left_desc.empty()) {
-    CV_Error(0, "left_desc is empty");
-  }
-  if (right_desc.empty()) {
-    CV_Error(0, "right_desc is empty");
-  }
+
+void MatchRichFeatures(const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& l_kps_descriptors,
+                       const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
+                       std::vector<cv::DMatch>& matches) {
+  // clear output variable
+  matches.clear();
+
+  const std::vector<cv::KeyPoint>& l_kps = l_kps_descriptors.first;
+  const cv::Mat& left_descriptors = l_kps_descriptors.second;
+  const std::vector<cv::KeyPoint>& r_kps = r_kps_descriptors.first;
+  const cv::Mat& right_descriptors = r_kps_descriptors.second;
 
   // matching descriptor vectors using Brute Force matcher
   cv::BFMatcher matcher(
@@ -37,8 +37,8 @@ void MatchRichFeatures(const cv::Mat& left_img, const cv::Mat& right_img, std::v
   // NOTE: Get this radial matching working
   // NOTE: Make sure your train & query indices are not flipped in ther matcher
   // matcher.radiusMatch(InputArray queryDescriptors, InputArray trainDescriptors, std::vector<std::vector<DMatch> > &matches, float maxDistance)
-  // matcher.radiusMatch(left_desc, right_desc, matches, 20);
-  matcher.match(left_desc, right_desc, matches);
+  // matcher.radiusMatch(left_descriptors, right_descriptors, matches, 20);
+  matcher.match(left_descriptors, right_descriptors, matches);
   assert(matches.size() > 0);
 
   std::vector<cv::DMatch> filt_matches;

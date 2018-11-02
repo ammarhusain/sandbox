@@ -6,17 +6,42 @@ Reconstruction::Reconstruction(std::vector<cv::Mat> images, cv::Mat K, cv::Mat d
     , distortion_coeff_(distortion_coeff) {}
 
 void Reconstruction::process() {
-  std::cout << "K\n" << K_ << "\ndistortion_coeff\n" << distortion_coeff_ << "\nProcessing # images " << images_.size() << std::endl;
+  std::cout << "K\n"
+            << K_ << "\ndistortion_coeff\n"
+            << distortion_coeff_ << "\nProcessing # images " << images_.size() << std::endl;
 
   int start_idx = 4;
-  int end_idx = 10; // images_.size() - 1
-    /** ------------------------------------------------------ */
+  int end_idx   = 10;   // images_.size() - 1
+  /** ------------------------------------------------------ */
   // Go through images
   for (int img_idx = start_idx; img_idx < end_idx; ++img_idx) {
     std::vector<cv::DMatch> matches;
-    std::vector<cv::KeyPoint> l_kps, r_kps;
-    MatchRichFeatures(images_[img_idx], images_[img_idx + 1], matches, l_kps, r_kps);
+
+    // Check if keypoints have already been computed. If so extract & reuse.
+    std::pair<std::vector<cv::KeyPoint>, cv::Mat> l_kps_descriptors;
+    auto kps = img_keypts_.find(img_idx);
+    if (kps != img_keypts_.end()) {
+      std::cout << "found  l kps  " << img_idx << std::endl;
+      l_kps_descriptors = kps->second;
+    } else {
+      GetFeatures(images_[img_idx], l_kps_descriptors);
+      img_keypts_.insert(std::make_pair(img_idx, l_kps_descriptors));
+    }
+    std::pair<std::vector<cv::KeyPoint>, cv::Mat> r_kps_descriptors;
+    kps = img_keypts_.find(img_idx + 1);
+    if (kps != img_keypts_.end()) {
+      std::cout << "found  r kps  " << img_idx + 1 << std::endl;
+      r_kps_descriptors = kps->second;
+    } else {
+      GetFeatures(images_[img_idx + 1], r_kps_descriptors);
+      img_keypts_.insert(std::make_pair(img_idx+1, r_kps_descriptors));
+    }
+
+    MatchRichFeatures(l_kps_descriptors, r_kps_descriptors, matches);
     // MatchOpticalFlowFeatures(images_[i], images_[i + 1], matches, l_kps, r_kps);
+
+
+    const std::vector<cv::KeyPoint> l_kps = l_kps_descriptors.first, r_kps = r_kps_descriptors.first;
 
     cv::Mat viz_img;
     std::vector<cv::Point2f> i_pts, j_pts;
@@ -40,10 +65,8 @@ void Reconstruction::process() {
       //}
     }
 
-    correspondence_matrix_.insert(std::make_pair(std::make_pair(img_idx, img_idx+1), std::make_tuple(refined_matches, F)));
-    img_pts_.insert(std::make_pair(img_idx, i_pts));
-    img_pts_.insert(std::make_pair(img_idx+1, j_pts));
-
+    correspondence_matrix_.insert(std::make_pair(
+        std::make_pair(img_idx, img_idx + 1), std::make_tuple(refined_matches, i_pts, j_pts, F)));
 
     // Visualization code
     {
@@ -67,9 +90,9 @@ void Reconstruction::process() {
       std::mt19937 g(rd());
       std::shuffle(refined_matches.begin(), refined_matches.end(), g);
       refined_matches.resize(10);
-      cv::drawMatches(images_[img_idx], l_good_a_kps, images_[img_idx + 1], r_good_a_kps, refined_matches, viz_img,
-                      cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
-                      cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+      cv::drawMatches(images_[img_idx], l_good_a_kps, images_[img_idx + 1], r_good_a_kps,
+                      refined_matches, viz_img, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                      std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
       //-- Show detected matches
       std::stringstream ss;
       ss << "feature_matches.png";
@@ -80,22 +103,22 @@ void Reconstruction::process() {
       }
       cv::destroyWindow(ss.str());
     }
-
   }
 
   std::cout << "Computing Projection Matrices\n";
 
   // Add the identity matrix for the very first image to set the origin coordinates.
   img_P_mats_.insert(std::make_pair(start_idx, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
-  std::vector<cv::Point2f> prev_j_pts;
+
   // Iterate over the correspondences datastructure to start processing
-  for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end(); ++crsp_itr) {
+  for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end();
+       ++crsp_itr) {
     // Extract data from the matches containers.
-    cv::Mat F = std::get<1>(crsp_itr->second);
-    int i_idx = std::get<0>(crsp_itr->first);
-    int j_idx = std::get<1>(crsp_itr->first);
-    std::vector<cv::Point2f> i_pts = img_pts_[i_idx];
-    std::vector<cv::Point2f> j_pts = img_pts_[j_idx];
+    cv::Mat F                      = std::get<3>(crsp_itr->second);
+    int i_idx                      = std::get<0>(crsp_itr->first);
+    int j_idx                      = std::get<1>(crsp_itr->first);
+    std::vector<cv::Point2f> i_pts = std::get<1>(crsp_itr->second);
+    std::vector<cv::Point2f> j_pts = std::get<2>(crsp_itr->second);
     cv::Matx34d P1                 = img_P_mats_[i_idx];
     std::cout << "  i_idx " << i_idx << "  j_idx  " << j_idx << std::endl;
     // Split F to compute E, then R & T
@@ -124,17 +147,12 @@ void Reconstruction::process() {
     for (int i = 0; i < i_pts.size(); i++) {
       s_i_j += cv::norm(i_pts[i] - j_pts[i]);
       i_j_err.push_back(cv::norm(i_pts[i] - j_pts[i]));
-      std::cout << i_pts[i] << " " << j_pts[i] << " " <<cv::norm(i_pts[i] - j_pts[i]) << "  ";
+      std::cout << i_pts[i] << " " << j_pts[i] << " " << cv::norm(i_pts[i] - j_pts[i]) << "  ";
     }
-    std::cout <<std::endl;
-    std::cout << "i_j_err  " << std::accumulate(i_j_err.begin(), i_j_err.end(), 0.0) << "  s_i_j " << s_i_j << "  sz " << i_j_err.size()
-              << std::endl;
+    std::cout << std::endl;
+    std::cout << "i_j_err  " << std::accumulate(i_j_err.begin(), i_j_err.end(), 0.0) << "  s_i_j "
+              << s_i_j << "  sz " << i_j_err.size() << std::endl;
 
-    // check if prev_j has crap... should be same as i_pts now
-    for (int i = 0; i < prev_j_pts.size(); ++i) {
-      if(prev_j_pts[i] != i_pts[i] )
-        std::cout << "yell" << std::endl;
-    }
     std::vector<double> tp1_tp2_err;
     for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
       tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
@@ -153,7 +171,7 @@ void Reconstruction::process() {
       cr2 =
           ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
       for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-          tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+        tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
       }
       std::cout << "error: " << cr1 << "   " << cr2 << "  "
                 << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) / tp1_tp2_err.size()
@@ -168,7 +186,7 @@ void Reconstruction::process() {
         cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_,
                                        triangulated_pts2);
         for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-            tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+          tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
         }
         std::cout << "error: " << cr1 << "   " << cr2 << "  "
                   << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) / tp1_tp2_err.size()
@@ -183,7 +201,7 @@ void Reconstruction::process() {
           cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_,
                                          triangulated_pts2);
           for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-              tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+            tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
           }
           std::cout << "error: " << cr1 << "   " << cr2 << "  "
                     << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) /
@@ -197,8 +215,6 @@ void Reconstruction::process() {
         }
       }
     }
-    // store prev
-    prev_j_pts = j_pts;
     // Store the computed second projection matrix
     img_P_mats_.insert(std::make_pair(j_idx, P2));
 

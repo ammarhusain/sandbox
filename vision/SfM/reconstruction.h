@@ -18,7 +18,8 @@ private:
   std::vector<cv::Mat> images_;
   cv::Mat K_;
   cv::Mat distortion_coeff_;
-  std::map<std::pair<int, int>, std::tuple<std::vector<cv::DMatch>, cv::Mat>> correspondence_matrix_;
-  std::unordered_map<int, std::vector<cv::Point2f>> img_pts_;
+  // Storing the raw points in the correspondence datastructure. This is not terribly efficient, should be storing indices instead. Will refactor if it becomes a concern. Code simplicity for now.
+  std::map<std::pair<int, int>, std::tuple<std::vector<cv::DMatch>, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat>> correspondence_matrix_;
+  std::unordered_map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> img_keypts_;
   std::unordered_map<int,cv::Matx34d> img_P_mats_;
 };
