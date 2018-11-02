@@ -68,14 +68,7 @@ bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const c
   for (int i    = 0; i < 12; i++)
     P4x4.val[i] = P.val[i];
 
-  std::cout << "P4x4 " << P4x4 << std::endl;
-
   perspectiveTransform(triangulated_pts, pcloud_pt3d_projected, P4x4);
-
-  for (size_t i = 0; i < 10; ++i){
-      // if (cv::norm(triangulated_pts[i]- pcloud_pt3d_projected[i]) > 1e-3)
-        std::cout << "tp1 " << triangulated_pts[i] << "   tp2 " << pcloud_pt3d_projected[i] << std::endl;
-    }
 
   status.resize(triangulated_pts.size(), 0);
   for (int i = 0; i < triangulated_pts.size(); i++) {

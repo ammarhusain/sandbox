@@ -8,9 +8,10 @@ Reconstruction::Reconstruction(std::vector<cv::Mat> images, cv::Mat K, cv::Mat d
 void Reconstruction::process() {
   std::cout << "K\n" << K_ << "\ndistortion_coeff\n" << distortion_coeff_ << "\nProcessing # images " << images_.size() << std::endl;
 
+  int start_idx = 4;
     /** ------------------------------------------------------ */
   // Go through images
-  for (int i = 0; i < images_.size() - 1; ++i) {
+  for (int i = start_idx; i < images_.size() - 1; ++i) {
     std::vector<cv::DMatch> matches;
     std::vector<cv::KeyPoint> l_kps, r_kps;
     MatchRichFeatures(images_[i], images_[i + 1], matches, l_kps, r_kps);
@@ -78,15 +79,12 @@ void Reconstruction::process() {
     //   }
     //   cv::destroyWindow(ss.str());
     // }
-    // Quit for debugging
-    break;
-
   }
 
   std::cout << "Computing Projection Matrices\n";
 
   // Add the identity matrix for the very first image to set the origin coordinates.
-  img_P_mats_.insert(std::make_pair(0, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
+  img_P_mats_.insert(std::make_pair(start_idx, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
 
   // Iterate over the correspondences datastructure to start processing
   for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end(); ++crsp_itr) {
@@ -165,6 +163,7 @@ void Reconstruction::process() {
     img_P_mats_.insert(std::make_pair(j_idx, P2));
 
     // Quit for debugging
-    break;
+      std::string name;
+  getline (std::cin, name);
   }
 }
