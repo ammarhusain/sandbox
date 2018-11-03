@@ -1,15 +1,13 @@
 #include "optical_flow.h"
 
-void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<cv::DMatch>& matches,
-                              std::vector<cv::KeyPoint>& left_keypoints,
-                              std::vector<cv::KeyPoint>& right_keypoints) {
-  left_keypoints.clear();
-  right_keypoints.clear();
-  cv::Ptr<cv::FeatureDetector> detector = cv::GFTTDetector::create(2500);
-  detector->detect(left_img, left_keypoints);
-  detector->detect(right_img, right_keypoints);
-  // cv::FAST(left_img, left_keypoints, 10);
-  // cv::FAST(right_img, right_keypoints, 10);
+void MatchOpticalFlowFeatures(
+    const cv::Mat& left_img, const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& l_kps_descriptors,
+    const cv::Mat& right_img,
+    const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
+    std::vector<cv::DMatch>& matches) {
+
+  const std::vector<cv::KeyPoint>& left_keypoints  = l_kps_descriptors.first;
+  const std::vector<cv::KeyPoint>& right_keypoints = r_kps_descriptors.first;
 
   std::vector<cv::Point2f> l_pts;
   cv::KeyPoint::convert(left_keypoints, l_pts);
@@ -89,7 +87,8 @@ void MatchOpticalFlowFeatures(cv::Mat left_img, cv::Mat right_img, std::vector<c
       found_in_imgpts_r.insert(mtch.trainIdx);
     }
   }
-  std::cout << "OF matches: " << matches.size() << " l: " << left_keypoints.size() << " r: " << right_keypoints.size() << std::endl;
+  std::cout << "OF matches: " << matches.size() << " l: " << left_keypoints.size()
+            << " r: " << right_keypoints.size() << std::endl;
   /*
   // draw flow field
   cv::Mat img_matches;

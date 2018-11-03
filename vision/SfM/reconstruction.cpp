@@ -10,8 +10,8 @@ void Reconstruction::process() {
             << K_ << "\ndistortion_coeff\n"
             << distortion_coeff_ << "\nProcessing # images " << images_.size() << std::endl;
 
-  int start_idx = 4;
-  int end_idx   = 10;   // images_.size() - 1
+  int start_idx = 0;
+  int end_idx   =  images_.size() - 1;
   /** ------------------------------------------------------ */
   // Go through images
   for (int img_idx = start_idx; img_idx < end_idx; ++img_idx) {
@@ -37,8 +37,8 @@ void Reconstruction::process() {
       img_keypts_.insert(std::make_pair(img_idx+1, r_kps_descriptors));
     }
 
-    MatchRichFeatures(l_kps_descriptors, r_kps_descriptors, matches);
-    // MatchOpticalFlowFeatures(images_[i], images_[i + 1], matches, l_kps, r_kps);
+    //MatchRichFeatures(l_kps_descriptors, r_kps_descriptors, matches);
+    MatchOpticalFlowFeatures(images_[img_idx], l_kps_descriptors, images_[img_idx + 1], r_kps_descriptors, matches);
 
 
     const std::vector<cv::KeyPoint> l_kps = l_kps_descriptors.first, r_kps = r_kps_descriptors.first;
@@ -120,7 +120,7 @@ void Reconstruction::process() {
     std::vector<cv::Point2f> i_pts = std::get<1>(crsp_itr->second);
     std::vector<cv::Point2f> j_pts = std::get<2>(crsp_itr->second);
     cv::Matx34d P1                 = img_P_mats_[i_idx];
-    std::cout << "  i_idx " << i_idx << "  j_idx  " << j_idx << std::endl;
+
     // Split F to compute E, then R & T
     // Essential matrix: compute then extract cameras [R|t]
     cv::Mat_<double> E = K_.t() * F * K_;   // according to HZ (9.12
@@ -147,9 +147,7 @@ void Reconstruction::process() {
     for (int i = 0; i < i_pts.size(); i++) {
       s_i_j += cv::norm(i_pts[i] - j_pts[i]);
       i_j_err.push_back(cv::norm(i_pts[i] - j_pts[i]));
-      std::cout << i_pts[i] << " " << j_pts[i] << " " << cv::norm(i_pts[i] - j_pts[i]) << "  ";
     }
-    std::cout << std::endl;
     std::cout << "i_j_err  " << std::accumulate(i_j_err.begin(), i_j_err.end(), 0.0) << "  s_i_j "
               << s_i_j << "  sz " << i_j_err.size() << std::endl;
 
@@ -211,6 +209,7 @@ void Reconstruction::process() {
               !TestTriangulation(triangulated_pts1, P2, triangulation_status) || cr1 > 100.0 ||
               cr2 > 100.0) {
             std::cout << "All 4 disambiguations failed to triangulate!!\n";
+            // continue;
           }
         }
       }
