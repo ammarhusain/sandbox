@@ -133,4 +133,6 @@ void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::Point
   }
   pcl_cloud.width = pcl_cloud.points.size();
   pcl_cloud.height = 1;
+  pcl::PCDWriter pw;
+  pw.write("current_pointcloud.pcd",pcl_cloud);
 }

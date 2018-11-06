@@ -73,6 +73,7 @@ void Reconstruction::process() {
   // Add the identity matrix for the very first image to set the origin coordinates.
   img_P_mats_.insert(std::make_pair(start_idx, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
 
+  std::vector<cv::Point3d> recon_pts;
   // Iterate over the correspondences datastructure to start processing
   for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end();
        ++crsp_itr) {
@@ -220,12 +221,19 @@ void Reconstruction::process() {
               }
               cv::destroyWindow(ss.str());
             }
+
+            // Populate pointcloud
+            pcl::PointCloud<pcl::PointXYZRGB> pcl_cloud;
+            populate_pcl_pointcloud(recon_pts, pcl_cloud);
+            return;
           }
         }
       }
     }
     // Store the computed second projection matrix
     img_P_mats_.insert(std::make_pair(j_idx, P2));
+
+    recon_pts.insert(recon_pts.end(), triangulated_pts1.begin(), triangulated_pts1.end());
 
     // Quit for debugging
     std::string name;
