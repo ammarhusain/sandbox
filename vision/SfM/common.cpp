@@ -122,6 +122,15 @@ void draw_arrows(cv::Mat& frame, const std::vector<cv::Point2f>& prev_pts,
   }
 }
 
-void populate_pcl_pointcloud(const std::vector<cv::Point3d> ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud) {
-
+void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud) {
+  pcl_cloud.clear();
+  for (auto ocvp : ocv_pts) {
+    pcl::PointXYZRGB pclp;
+    pclp.x = ocvp.x;
+    pclp.y = ocvp.y;
+    pclp.z = ocvp.z;
+    pcl_cloud.push_back(pclp);
+  }
+  pcl_cloud.width = pcl_cloud.points.size();
+  pcl_cloud.height = 1;
 }

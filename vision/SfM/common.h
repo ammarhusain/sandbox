@@ -66,4 +66,4 @@ void draw_arrows(cv::Mat& frame, const std::vector<cv::Point2f>& prev_pts,
               << std::endl;                                                                        \
   }
 
-void populate_pcl_pointcloud(const std::vector<cv::Point3d> ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud);
+void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud);
