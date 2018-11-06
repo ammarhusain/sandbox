@@ -14,5 +14,5 @@
 void MatchOpticalFlowFeatures(
     const cv::Mat& left_img, const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& l_kps_descriptors,
     const cv::Mat& right_img,
-    const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
+    std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
     std::vector<cv::DMatch>& matches);

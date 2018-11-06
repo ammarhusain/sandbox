@@ -32,6 +32,15 @@
 #include <string>
 #include <vector>
 
+#include <pcl/common/common.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/io.h>
+#include <pcl/io/file_io.h>
+#include <pcl/io/pcd_io.h>
+
+#include <pcl/point_types.h>
+
 std::vector<std::string> open_dir(const std::string& dir_name);
 
 std::vector<cv::Mat> open_images(const std::string& dir_name,
@@ -56,3 +65,5 @@ void draw_arrows(cv::Mat& frame, const std::vector<cv::Point2f>& prev_pts,
               << ((double) cv::getTickCount() - __time_in_ticks) / cv::getTickFrequency() << "s"   \
               << std::endl;                                                                        \
   }
+
+void populate_pcl_pointcloud(const std::vector<cv::Point3d> ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud);

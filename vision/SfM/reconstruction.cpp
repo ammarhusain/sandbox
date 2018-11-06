@@ -21,7 +21,6 @@ void Reconstruction::process() {
     std::pair<std::vector<cv::KeyPoint>, cv::Mat> l_kps_descriptors;
     auto kps = img_keypts_.find(img_idx);
     if (kps != img_keypts_.end()) {
-      std::cout << "found  l kps  " << img_idx << std::endl;
       l_kps_descriptors = kps->second;
     } else {
       GetFeatures(images_[img_idx], l_kps_descriptors);
@@ -30,7 +29,6 @@ void Reconstruction::process() {
     std::pair<std::vector<cv::KeyPoint>, cv::Mat> r_kps_descriptors;
     kps = img_keypts_.find(img_idx + 1);
     if (kps != img_keypts_.end()) {
-      std::cout << "found  r kps  " << img_idx + 1 << std::endl;
       r_kps_descriptors = kps->second;
     } else {
       GetFeatures(images_[img_idx + 1], r_kps_descriptors);
@@ -43,11 +41,11 @@ void Reconstruction::process() {
 
     const std::vector<cv::KeyPoint> l_kps = l_kps_descriptors.first, r_kps = r_kps_descriptors.first;
 
-    cv::Mat viz_img;
     std::vector<cv::Point2f> i_pts, j_pts;
     std::vector<cv::KeyPoint> l_good_a_kps, r_good_a_kps;
     cv::Mat F = EpipolarFeatureRefinement(l_kps, r_kps, matches, l_good_a_kps, r_good_a_kps);
 
+    std::cout << "feature match size: " << matches.size() << " efr: " << l_good_a_kps.size() << std::endl;
     i_pts.clear();
     j_pts.clear();
 
@@ -68,41 +66,6 @@ void Reconstruction::process() {
     correspondence_matrix_.insert(std::make_pair(
         std::make_pair(img_idx, img_idx + 1), std::make_tuple(refined_matches, i_pts, j_pts, F)));
 
-    // Visualization code
-    {
-      images_[img_idx].copyTo(viz_img);
-      std::vector<uchar> vstatus(l_kps.size(), 1);
-      std::vector<float> verror(l_kps.size(), 1.0);
-      draw_arrows(viz_img, i_pts, j_pts, vstatus, verror, cv::Scalar(0, 255, 0));
-      std::stringstream ss;
-      ss << "filtered_matches_" << i_pts.size() << ".png";
-      cv::imshow(ss.str(), viz_img);
-      // int c = cv::waitKey(0);
-      // if (c == 's') {
-      //   cv::imwrite(ss.str(), viz_img);
-      // }
-      // cv::destroyWindow(ss.str());
-    }
-
-    {
-      //-- Draw only "good" matches: shuffle & draw a random 100
-      std::random_device rd;
-      std::mt19937 g(rd());
-      std::shuffle(refined_matches.begin(), refined_matches.end(), g);
-      refined_matches.resize(10);
-      cv::drawMatches(images_[img_idx], l_good_a_kps, images_[img_idx + 1], r_good_a_kps,
-                      refined_matches, viz_img, cv::Scalar::all(-1), cv::Scalar::all(-1),
-                      std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-      //-- Show detected matches
-      std::stringstream ss;
-      ss << "feature_matches.png";
-      cv::imshow(ss.str(), viz_img);
-      int c = cv::waitKey(0);
-      if (c == 's') {
-        cv::imwrite(ss.str(), viz_img);
-      }
-      cv::destroyWindow(ss.str());
-    }
   }
 
   std::cout << "Computing Projection Matrices\n";
@@ -210,6 +173,53 @@ void Reconstruction::process() {
               cr2 > 100.0) {
             std::cout << "All 4 disambiguations failed to triangulate!!\n";
             // continue;
+
+            // Visualization code
+            cv::Mat viz_img;
+            {
+              images_[i_idx].copyTo(viz_img);
+              std::vector<uchar> vstatus(i_pts.size(), 1);
+              std::vector<float> verror(i_pts.size(), 1.0);
+              draw_arrows(viz_img, i_pts, j_pts, vstatus, verror, cv::Scalar(0, 255, 0));
+              std::stringstream ss;
+              ss << "filtered_matches_" << i_pts.size() << ".png";
+              cv::imshow(ss.str(), viz_img);
+              // int c = cv::waitKey(0);
+              // if (c == 's') {
+              //   cv::imwrite(ss.str(), viz_img);
+              // }
+              // cv::destroyWindow(ss.str());
+            }
+
+            {
+              //-- Draw only "good" matches: shuffle & draw a random 100
+              std::random_device rd;
+              std::mt19937 g(rd());
+              auto refined_matches = std::get<0>(crsp_itr->second);
+
+              // std::shuffle(refined_matches.begin(), refined_matches.end(), g);
+              refined_matches.resize(10);
+              std::vector<cv::KeyPoint> l_good_a_kps, r_good_a_kps;
+              for (size_t kp = 0; kp < 10; ++kp) {
+                cv::KeyPoint tkp;
+                tkp.pt = i_pts[kp];
+                l_good_a_kps.push_back(tkp);
+                tkp.pt = j_pts[kp];
+                r_good_a_kps.push_back(tkp);
+              }
+              cv::drawMatches(images_[i_idx], l_good_a_kps, images_[j_idx], r_good_a_kps,
+                              refined_matches, viz_img, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                              std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+              //-- Show detected matches
+              std::stringstream ss;
+              ss << "feature_matches.png";
+              cv::imshow(ss.str(), viz_img);
+              int c = cv::waitKey(0);
+              if (c == 's') {
+                cv::imwrite(ss.str(), viz_img);
+              }
+              cv::destroyWindow(ss.str());
+            }
           }
         }
       }

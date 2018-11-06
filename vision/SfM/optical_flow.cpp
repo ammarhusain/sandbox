@@ -3,7 +3,7 @@
 void MatchOpticalFlowFeatures(
     const cv::Mat& left_img, const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& l_kps_descriptors,
     const cv::Mat& right_img,
-    const std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
+    std::pair<std::vector<cv::KeyPoint>, cv::Mat>& r_kps_descriptors,
     std::vector<cv::DMatch>& matches) {
 
   const std::vector<cv::KeyPoint>& left_keypoints  = l_kps_descriptors.first;
@@ -36,6 +36,23 @@ void MatchOpticalFlowFeatures(
 
   // Run optical flow.
   calcOpticalFlowPyrLK(prevgray, gray, l_pts, r_pts, vstatus, verror);
+
+  std::cout << "r_pts: " << r_pts.size() << " l_pts: " << l_pts.size() << " vs: " <<cv::countNonZero(vstatus) << std::endl;
+  //!!  Create matches datastructure here.
+  matches.clear();
+  r_kps_descriptors.first.clear();
+  for (size_t m = 0; m < l_pts.size(); ++m) {
+    cv::DMatch mtch;
+    mtch.queryIdx = m;
+    mtch.trainIdx =m;
+    mtch.imgIdx=m;
+    mtch.distance=1.0f;
+    matches.push_back(mtch);
+    cv::KeyPoint kp;
+    kp.pt = r_pts[m];
+    r_kps_descriptors.first.push_back(kp);
+  }
+  return;
 
   std::vector<cv::Point2f> to_find;
   std::vector<int> to_find_back_idx;

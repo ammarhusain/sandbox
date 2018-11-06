@@ -2,7 +2,7 @@
 #include "camera_matrices.h"
 
 void GetFeatures(const cv::Mat& img, std::pair<std::vector<cv::KeyPoint>, cv::Mat>& kps_descriptors) {
-  cv::Ptr<cv::FeatureDetector> detector  = cv::GFTTDetector::create();
+  cv::Ptr<cv::FeatureDetector> detector  = cv::GFTTDetector::create(5000);
   cv::Ptr<cv::FeatureDetector> extractor = cv::ORB::create();
   // cv::Ptr<cv::FeatureDetector> detector  = cv::FastFeatureDetector::create();
   // cv::Ptr<cv::FeatureDetector> extractor = cv::ORB::create();

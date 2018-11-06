@@ -54,8 +54,6 @@ cv::Mat EpipolarFeatureRefinement(const std::vector<cv::KeyPoint>& kps1,
       good_kps2.push_back(aligned_kps2[i]);
     }
   }
-  std::cout << "EF Refinement:: matches : " << matches.size() << " kps: " << kps1.size() << " to "
-            << good_kps1.size() << " & " << kps2.size() << " to " << good_kps2.size() << std::endl;
   return F;
 }
 
