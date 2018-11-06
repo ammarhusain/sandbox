@@ -129,6 +129,10 @@ void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::Point
     pclp.x = ocvp.x;
     pclp.y = ocvp.y;
     pclp.z = ocvp.z;
+    // pack r/g/b into rgb
+    uint8_t r = 255, g = 0, b = 0;    // Example: Red color
+    uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+    pclp.rgb = *reinterpret_cast<float*>(&rgb);
     pcl_cloud.push_back(pclp);
   }
   pcl_cloud.width = pcl_cloud.points.size();
