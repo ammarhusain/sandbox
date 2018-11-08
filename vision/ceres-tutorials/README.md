@@ -1,0 +1,1 @@
+sudo apt-get install libceres1 libceres-dev
