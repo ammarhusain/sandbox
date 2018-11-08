@@ -122,13 +122,13 @@ void draw_arrows(cv::Mat& frame, const std::vector<cv::Point2f>& prev_pts,
   }
 }
 
-void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud) {
+void populate_pcl_pointcloud(const std::vector<CloudPoint>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud) {
   pcl_cloud.clear();
   for (auto ocvp : ocv_pts) {
     pcl::PointXYZRGB pclp;
-    pclp.x = ocvp.x;
-    pclp.y = ocvp.y;
-    pclp.z = ocvp.z;
+    pclp.x = ocvp.pt.x;
+    pclp.y = ocvp.pt.y;
+    pclp.z = ocvp.pt.z;
     // pack r/g/b into rgb
     uint8_t r = 255, g = 0, b = 0;    // Example: Red color
     uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);

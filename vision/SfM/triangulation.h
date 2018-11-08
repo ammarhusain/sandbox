@@ -8,12 +8,17 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
 
+#include "common.h"
+
 // Macros
 #define EPSILON 0.0001
-#define MY_TRIANGULATE 0
 
-double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Point2f>& pts1, const cv::Matx34d& P2,
-                                const std::vector<cv::Point2f>& pts2, const cv::Mat& K, const cv::Mat& distortion_coeff, std::vector<cv::Point3d>& triangulated_pts);
+
+double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Point2f>& pts1,
+                                const int& idx1, const cv::Matx34d& P2,
+                                const std::vector<cv::Point2f>& pts2, const int& idx2,
+                                const cv::Mat& K, const cv::Mat& distortion_coeff,
+                                std::vector<CloudPoint>& triangulated_pts);
 
 cv::Mat_<double> LinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
                                        cv::Matx34d P2, double w1 = 1.0, double w2 = 1.0);
@@ -33,5 +38,5 @@ cv::Mat_<double> LinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Poin
 cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d kp1, cv::Matx34d P1, cv::Point3d kp2,
                                                 cv::Matx34d P2);
 
-bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const cv::Matx34d& P,
+bool TestTriangulation(const std::vector<CloudPoint>& triangulated_cpts, const cv::Matx34d& P,
                        std::vector<uchar>& status);

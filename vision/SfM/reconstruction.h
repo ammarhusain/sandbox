@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 
+
 class Reconstruction {
  public:
   Reconstruction() = delete;

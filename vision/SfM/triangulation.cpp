@@ -13,16 +13,17 @@ cv::Mat_<double> LinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P1, cv::Po
   cv::Mat((1 / w2) * (h_pt2.x * P2.row(2).t() - P2.row(0).t()).t()).copyTo(eqs.row(2));
   cv::Mat((1 / w2) * (h_pt2.y * P2.row(2).t() - P2.row(1).t()).t()).copyTo(eqs.row(3));
 
-  cv::Mat A(4,3, CV_64FC1);
+  cv::Mat A(4, 3, CV_64FC1);
   // A = eqs.colRange(0, 2);
   cv::Mat(eqs.col(0)).copyTo(A.col(0));
   cv::Mat(eqs.col(1)).copyTo(A.col(1));
   cv::Mat(eqs.col(2)).copyTo(A.col(2));
 
-  cv::Mat B(4,1, CV_64FC1);
+  cv::Mat B(4, 1, CV_64FC1);
   cv::Mat(eqs.col(3)).copyTo(B.col(0));
-  // Since the equation is Ax = B, the sign of B should be flipped to move it over to the other side.
-  B = -1.0*B;
+  // Since the equation is Ax = B, the sign of B should be flipped to move it over to the other
+  // side.
+  B = -1.0 * B;
   cv::Mat_<double> X;
   cv::solve(A, B, X, cv::DECOMP_SVD);
 
@@ -36,12 +37,12 @@ cv::Mat_<double> LinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P1, cv::Po
   return X;
 }
 
-cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P1, cv::Point3d h_pt2,
-                                                cv::Matx34d P2) {
+cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P1,
+                                                cv::Point3d h_pt2, cv::Matx34d P2) {
   double w1 = 1, w2 = 1;
-  cv::Mat_<double> X(3, 1), HX(4,1);
-      for (int i = 0; i < 10; ++i) {
-        //for (int i = 0; i < 1; ++i) {
+  cv::Mat_<double> X(3, 1), HX(4, 1);
+  for (int i = 0; i < 10; ++i) {
+    // for (int i = 0; i < 1; ++i) {
     X = LinearLSTriangulation(h_pt1, P1, h_pt2, P2, w1, w2);
 
     // Convert to homogeneous coordinates;
@@ -60,8 +61,14 @@ cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d h_pt1, cv::Matx34d P
   return HX;
 }
 
-bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const cv::Matx34d& P,
+bool TestTriangulation(const std::vector<CloudPoint>& triangulated_cpts, const cv::Matx34d& P,
                        std::vector<uchar>& status) {
+  std::vector<cv::Point3d> triangulated_pts;
+  triangulated_pts.reserve(triangulated_cpts.size());
+  for (auto cpt: triangulated_cpts) {
+    triangulated_pts.push_back(cpt.pt);
+  }
+
   std::vector<cv::Point3d> pcloud_pt3d_projected(triangulated_pts.size());
 
   cv::Matx44d P4x4 = cv::Matx44d::eye();
@@ -85,18 +92,18 @@ bool TestTriangulation(const std::vector<cv::Point3d>& triangulated_pts, const c
 }
 
 double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Point2f>& pts1,
-                                const cv::Matx34d& P2, const std::vector<cv::Point2f>& pts2,
+                                const int& idx1, const cv::Matx34d& P2,
+                                const std::vector<cv::Point2f>& pts2, const int& idx2,
                                 const cv::Mat& K, const cv::Mat& distortion_coeff,
-                                std::vector<cv::Point3d>& triangulated_pts) {
+                                std::vector<CloudPoint>& triangulated_pts) {
   // Clear the output constainer.
   triangulated_pts.clear();
 
   std::vector<double> reproj_error;
   cv::Mat_<double> KP2 = K * cv::Mat(P2);
   cv::Mat_<double> KP1 = K * cv::Mat(P1);
-  cv::Mat Kinv = K.inv();
-   for (int i = 0; i < pts1.size(); i++) {
-  //for (int i = 0; i < 10; i++) {
+  cv::Mat Kinv         = K.inv();
+  for (int i = 0; i < pts1.size(); i++) {
     cv::Point2f pt1 = pts1[i];
     cv::Point3d pt1_h(pt1.x, pt1.y, 1.0);
     cv::Mat_<double> um = Kinv * cv::Mat_<double>(pt1_h);
@@ -106,10 +113,10 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
 
     cv::Point2f pt2 = pts2[i];
     cv::Point3d pt2_h(pt2.x, pt2.y, 1.0);
-    um = Kinv * cv::Mat_<double>(pt2_h);
-    pt2_h.x             = um(0);
-    pt2_h.y             = um(1);
-    pt2_h.z             = um(2);
+    um      = Kinv * cv::Mat_<double>(pt2_h);
+    pt2_h.x = um(0);
+    pt2_h.y = um(1);
+    pt2_h.z = um(2);
 
     cv::Mat_<double> X = IterativeLinearLSTriangulation(pt1_h, P1, pt2_h, P2);
 
@@ -121,10 +128,12 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
     cv::Point2f x_pt1(x_pt1_h(0) / x_pt1_h(2), x_pt1_h(1) / x_pt1_h(2));
 
     // Try computing reprojection error with first image as well?
-
-    triangulated_pts.push_back(cv::Point3d(X(0)/X(3), X(1)/X(3), X(2)/X(3)));
+    CloudPoint cp;
+    cp.pt = cv::Point3d(X(0) / X(3), X(1) / X(3), X(2) / X(3));
+    cp.kp_idx.push_back(std::make_pair(idx1, i));
+    cp.kp_idx.push_back(std::make_pair(idx2, i));
+    triangulated_pts.push_back(cp);
   }
-
 
   return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
 }

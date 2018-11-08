@@ -79,7 +79,7 @@ void Reconstruction::process() {
   // Add the identity matrix for the very first image to set the origin coordinates.
   img_P_mats_.insert(std::make_pair(start_idx, cv::Matx34d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0)));
 
-  std::vector<cv::Point3d> recon_pts;
+  std::vector<CloudPoint> recon_pts;
   // Iterate over the correspondences datastructure to start processing
   for (auto crsp_itr = correspondence_matrix_.begin(); crsp_itr != correspondence_matrix_.end();
        ++crsp_itr) {
@@ -127,10 +127,10 @@ void Reconstruction::process() {
     std::cout << "P2\n" << P2 << std::endl;
 
     double cr1, cr2;
-    std::vector<cv::Point3d> triangulated_pts1, triangulated_pts2;
+    std::vector<CloudPoint> triangulated_pts1, triangulated_pts2;
     std::vector<uchar> triangulation_status;
-    cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_, triangulated_pts1);
-    cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
+    cr1 = ComputeReprojectionError(P1, i_pts, i_idx, P2, j_pts, j_idx, K_, distortion_coeff_, triangulated_pts1);
+    cr2 = ComputeReprojectionError(P2, j_pts, j_idx, P1, i_pts, i_idx, K_, distortion_coeff_, triangulated_pts2);
 
     std::vector<double> i_j_err;
     double s_i_j = 0;
@@ -143,7 +143,7 @@ void Reconstruction::process() {
 
     std::vector<double> tp1_tp2_err;
     for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-      tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+      tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i].pt - triangulated_pts2[i].pt));
     }
     std::cout << "error: " << cr1 << "   " << cr2 << "  "
               << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) / tp1_tp2_err.size()
@@ -155,11 +155,11 @@ void Reconstruction::process() {
       P2 = cv::Matx34d(R1(0, 0), R1(0, 1), R1(0, 2), t2(0), R1(1, 0), R1(1, 1), R1(1, 2), t2(1),
                        R1(2, 0), R1(2, 1), R1(2, 2), t2(2));
       cr1 =
-          ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_, triangulated_pts1);
+          ComputeReprojectionError(P1, i_pts, i_idx, P2, j_pts, j_idx, K_, distortion_coeff_, triangulated_pts1);
       cr2 =
-          ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_, triangulated_pts2);
+          ComputeReprojectionError(P2, j_pts, j_idx, P1, i_pts, i_idx, K_, distortion_coeff_, triangulated_pts2);
       for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-        tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+        tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i].pt - triangulated_pts2[i].pt));
       }
       std::cout << "error: " << cr1 << "   " << cr2 << "  "
                 << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) / tp1_tp2_err.size()
@@ -169,12 +169,12 @@ void Reconstruction::process() {
           cr2 > 100.0) {
         P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t1(0), R2(1, 0), R2(1, 1), R2(1, 2), t1(1),
                          R2(2, 0), R2(2, 1), R2(2, 2), t1(2));
-        cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_,
+        cr1 = ComputeReprojectionError(P1, i_pts, i_idx, P2, j_pts, j_idx, K_, distortion_coeff_,
                                        triangulated_pts1);
-        cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_,
+        cr2 = ComputeReprojectionError(P2, j_pts, j_idx, P1, i_pts, i_idx, K_, distortion_coeff_,
                                        triangulated_pts2);
         for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-          tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+          tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i].pt - triangulated_pts2[i].pt));
         }
         std::cout << "error: " << cr1 << "   " << cr2 << "  "
                   << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) / tp1_tp2_err.size()
@@ -184,12 +184,12 @@ void Reconstruction::process() {
             cr2 > 100.0) {
           P2 = cv::Matx34d(R2(0, 0), R2(0, 1), R2(0, 2), t2(0), R2(1, 0), R2(1, 1), R2(1, 2), t2(1),
                            R2(2, 0), R2(2, 1), R2(2, 2), t2(2));
-          cr1 = ComputeReprojectionError(P1, i_pts, P2, j_pts, K_, distortion_coeff_,
+          cr1 = ComputeReprojectionError(P1, i_pts, i_idx, P2, j_pts, j_idx, K_, distortion_coeff_,
                                          triangulated_pts1);
-          cr2 = ComputeReprojectionError(P2, j_pts, P1, i_pts, K_, distortion_coeff_,
+          cr2 = ComputeReprojectionError(P2, j_pts, j_idx, P1, i_pts, i_idx, K_, distortion_coeff_,
                                          triangulated_pts2);
           for (size_t i = 0; i < triangulated_pts1.size(); ++i) {
-            tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i] - triangulated_pts2[i]));
+            tp1_tp2_err.push_back(cv::norm(triangulated_pts1[i].pt - triangulated_pts2[i].pt));
           }
           std::cout << "error: " << cr1 << "   " << cr2 << "  "
                     << std::accumulate(tp1_tp2_err.begin(), tp1_tp2_err.end(), 0) /

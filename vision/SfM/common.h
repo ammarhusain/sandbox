@@ -38,8 +38,14 @@
 #include <pcl/io/io.h>
 #include <pcl/io/file_io.h>
 #include <pcl/io/pcd_io.h>
-
 #include <pcl/point_types.h>
+
+
+struct CloudPoint {
+  cv::Point3d pt;
+  std::vector<std::pair<int, int>> kp_idx;
+};
+
 
 std::vector<std::string> open_dir(const std::string& dir_name);
 
@@ -66,4 +72,4 @@ void draw_arrows(cv::Mat& frame, const std::vector<cv::Point2f>& prev_pts,
               << std::endl;                                                                        \
   }
 
-void populate_pcl_pointcloud(const std::vector<cv::Point3d>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud);
+void populate_pcl_pointcloud(const std::vector<CloudPoint>& ocv_pts, pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud);
