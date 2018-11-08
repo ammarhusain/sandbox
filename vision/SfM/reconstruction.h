@@ -24,7 +24,7 @@ class Reconstruction {
   // now.
 
   struct ScrollingCmp {
-    bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) {
+    bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const {
       if (rhs.second > lhs.second) {
         return true;
       } else if (rhs.second == lhs.second) {

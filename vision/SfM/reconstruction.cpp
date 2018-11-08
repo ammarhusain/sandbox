@@ -201,6 +201,7 @@ void Reconstruction::process() {
             std::cout << "All 4 disambiguations failed to triangulate ... Skipping!!\n";
             // continue;
 
+
             // // Visualization code
             // cv::Mat viz_img;
             // {

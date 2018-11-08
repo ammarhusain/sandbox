@@ -7,8 +7,8 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
-
 #include "common.h"
+#include <numeric>
 
 // Macros
 #define EPSILON 0.0001
