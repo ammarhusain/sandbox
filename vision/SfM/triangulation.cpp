@@ -91,64 +91,6 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
   // Clear the output constainer.
   triangulated_pts.clear();
 
-#ifndef MY_TRIANGULATE
-  std::vector<cv::Point2f> pts1_u, pts2_u;
-  cv::undistortPoints(pts1, pts1_u, K, distortion_coeff, cv::noArray(), K);
-  cv::undistortPoints(pts2, pts2_u, K, distortion_coeff, cv::noArray(), K);
-
-  cv::Mat pt_3d_h(4, pts1.size(), CV_32F);
-  cv::triangulatePoints(P1, P2, pts1_u, pts2_u, pt_3d_h);
-
-  // std::vector<cv::Vec4f> pt_3d_hv(pts1.size());
-  // cv::triangulatePoints(P1, P2, pts1_u, pts2_u, pt_3d_hv);
-
-  // calculate reprojection
-  // Conversion lambda to go from homogeneous to euclidean.
-  auto convert_homogeneous2euclidean = [](const cv::Mat& pt_3d_h) {
-    assert(pt_3d_h.rows == 4 && pt_3d_h.cols >= 1);
-    std::vector<cv::Point3f> pt_3dv;
-    pt_3dv.reserve(pt_3d_h.cols);
-    for (size_t c = 0; c < pt_3d_h.cols; ++c) {
-      if (fabs(pt_3d_h.at<float>(3, c)) > 1e-2)
-        pt_3dv.push_back(cv::Point3f(pt_3d_h.at<float>(0, c) / pt_3d_h.at<float>(3, c),
-                                     pt_3d_h.at<float>(1, c) / pt_3d_h.at<float>(3, c),
-                                     pt_3d_h.at<float>(2, c) / pt_3d_h.at<float>(3, c)));
-      else
-        pt_3dv.push_back(cv::Point3f(0, 0, 0));
-    }
-    return pt_3dv;
-  };
-
-  std::vector<cv::Point3f> pt_3dv = convert_homogeneous2euclidean(pt_3d_h);
-
-  // shrink pts for debugging
-  pt_3dv.resize(6);
-  for (size_t i = 0; i < pt_3dv.size(); ++i)
-    std::cout << "pts1 " << pts1[i] << " pts1_u " << pts1_u[i] << " pts2 " << pts2[i] << " pts2_u "
-              << pts2_u[i] << " hp " << pt_3d_h.col(i).t() << " ep " << pt_3dv[i] << std::endl;
-
-  cv::Mat_<double> R = (cv::Mat_<double>(3, 3) << P2(0, 0), P2(0, 1), P2(0, 2), P2(1, 0), P2(1, 1),
-                        P2(1, 2), P2(2, 0), P2(2, 1), P2(2, 2));
-  cv::Vec3d rvec;
-  // std::cout << "R\n" << R << std::endl;
-  cv::Rodrigues(R, rvec);
-  cv::Vec3d tvec(P2(0, 3), P2(1, 3), P2(2, 3));
-  // std::cout << "rvec " << rvec << "  tvec  " << tvec << std::endl;
-  std::vector<cv::Point2f> reprojected_pt_set1;
-  // cv::projectPoints(pt_3dv, rvec, tvec, K, distortion_coeff, reprojected_pt_set1);
-  cv::Mat d_zero = (cv::Mat_<double>(5, 1) << 0, 0, 0, 0, 0);
-  cv::projectPoints(pt_3dv, rvec, tvec, K, d_zero, reprojected_pt_set1);
-  std::vector<double> reproj_error;
-  for (unsigned int i = 0; i < pt_3dv.size(); i++) {
-    // cv::CloudPoint cp;
-    // cp.pt = pt_3d[i];
-    // pointcloud.push_back(cp);
-    std::cout << "3d_pt " << pt_3dv[i] << " pt " << pts1[i] << "  rpt " << reprojected_pt_set1[i]
-              << std::endl;
-    reproj_error.push_back(norm(pts2[i] - reprojected_pt_set1[i]));
-  }
-  return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
-#else
   std::vector<double> reproj_error;
   cv::Mat_<double> KP2 = K * cv::Mat(P2);
   cv::Mat_<double> KP1 = K * cv::Mat(P1);
@@ -185,5 +127,4 @@ double ComputeReprojectionError(const cv::Matx34d& P1, const std::vector<cv::Poi
 
 
   return std::accumulate(reproj_error.begin(), reproj_error.end(), 0.0) / reproj_error.size();
-#endif
 }
