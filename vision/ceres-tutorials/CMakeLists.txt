@@ -12,8 +12,19 @@ add_compile_options(-std=c++11)
 
 find_package(Ceres 1.2.3 REQUIRED)
 
-message("*********in ${CERES_INCLUDE_DIRS}")
-message("*******lib ${CERES_LIBRARIES}")
-add_executable(ceres-tutorials helloworld.cpp)
-target_include_directories(ceres-tutorials PRIVATE ${CERES_INCLUDE_DIRS})
-target_link_libraries(ceres-tutorials ${CERES_LIBRARIES})
+add_executable(helloworld helloworld.cpp)
+target_include_directories(helloworld PRIVATE ${CERES_INCLUDE_DIRS})
+target_link_libraries(helloworld ${CERES_LIBRARIES})
+
+add_executable(curve-fitting curve-fitting.cpp)
+target_include_directories(curve-fitting PRIVATE ${CERES_INCLUDE_DIRS})
+target_link_libraries(curve-fitting ${CERES_LIBRARIES})
+
+add_executable(bundle-adjuster bundle-adjuster.cpp)
+target_include_directories(bundle-adjuster PRIVATE ${CERES_INCLUDE_DIRS})
+target_link_libraries(bundle-adjuster ${CERES_LIBRARIES})
+
+add_executable(robot-pose-mle robot-pose-mle.cpp)
+target_include_directories(robot-pose-mle PUBLIC ${CERES_INCLUDE_DIRS})
+target_link_libraries(robot-pose-mle ${CERES_LIBRARIES} ${GFLAGS_LIBRARIES})
+message("gf ${GFLAGS_LIBRARIES}")
